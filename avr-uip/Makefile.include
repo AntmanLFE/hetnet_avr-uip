@@ -100,7 +100,7 @@ $(NAME).out: dev_OBJECTS app_OBJECTS lib_OBJECTS $(NAME)_OBJECTS uip_OBJECTS
 $(NAME).hex: $(NAME).out
 	$(OBJCOPY) -R .eeprom -O ihex $(OBJECTDIR)/$(NAME).out $(OBJECTDIR)/$(NAME).hex
 ifeq ($(UNAME), Linux)
-	avr-size $(OBJECTDIR)/$(NAME).out
+	$(AVRSIZE) $(OBJECTDIR)/$(NAME).out
 else
 	avr-size -C --mcu=$(MCU) $(OBJECTDIR)/$(NAME).out
 endif
@@ -109,7 +109,7 @@ endif
 load:: $(NAME).hex
 	set -x
 ifeq ($(UNAME), Linux)
-	avrdude -V -p $(CHIP) -c $(PROGRAMMER) -e -B 2 -U flash:w:$(OBJECTDIR)/$(NAME).hex
+	avrdude -V -p $(CHIP) -c $(PROGRAMMER) -P $(PORT) -b $(UPLOAD_RATE) -e -B 2 -U flash:w:$(OBJECTDIR)/$(NAME).hex
 else
 	Stk500.exe -d$(MCU) -e -if$(OBJECTDIR)/$(NAME).hex -pf -cUSB
 endif 
@@ -131,6 +131,7 @@ fuses::
 ifeq ($(UNAME), Linux)
 	avrdude -p $(CHIP) -c $(PROGRAMMER) -u -v -U lfuse:w:$(LFUSE):m
 	avrdude -p $(CHIP) -c $(PROGRAMMER) -u -v -U hfuse:w:$(HFUSE):m
+	avrdude -p $(CHIP) -c $(PROGRAMMER) -u -v -U hfuse:w:$(EFUSE):m
 else
 	$(error "HMM.. what now... ")
 endif

@@ -31,14 +31,14 @@
 #TODO: Programmer configuration for avrdude
 
 #Define programmer used
-ifndef $(PROGRAMMER)
-	PROGRAMMER	= avrusb500
-endif
+#ifndef $(PROGRAMMER)
+#	PROGRAMMER	= avrusb500
+#endif
 
 ############################# Compiler configuration ##############################
 
 #Compiler selection
-CC		= avr-gcc
+CC		= /usr/local/avr/bin/avr-gcc
 
 #check if we have a C lint tool
 LINT=
@@ -53,13 +53,11 @@ ifneq ($(FINDLINT),)
 LINT	= $(FINDLINT)
 endif
 
-#Compiler flags
-ifndef CFLAGS
-  CFLAGS	= -Wall -mmcu=$(MCU) -g -fpack-struct -Os -funsigned-char -funsigned-bitfields -mcall-prologues -Wstrict-prototypes -std=gnu99
-endif 
-
 #Object translator
-OBJCOPY	= avr-objcopy
+OBJCOPY	= /usr/local/avr/bin/avr-objcopy
+
+#Avr-size
+AVRSIZE = /usr/local/avr/bin/avr-size
 
 ############################# Directory configuration #############################
 
