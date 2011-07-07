@@ -2,8 +2,6 @@
 #ifndef __GLOBAL_CONF_H__
 #define __GLOBAL_CONF_H__
 
-//Define frequency
-#define F_CPU 8000000UL
 //Mac adress definition for enc28j60
 #define ETHADDR0		0x00
 #define ETHADDR1		0xbd

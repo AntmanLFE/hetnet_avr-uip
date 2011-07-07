@@ -8,20 +8,15 @@ PROGRAMMER = avrispmkII
 PORT = usb
 UPLOAD_RATE = 115200
 F_CPU = 8000000
-
 #Project name
 NAME    =  test
 
-
+#Compiler flags
 OPT = s
-
 # Place -D or -U options here
 CDEFS = -DF_CPU=$(F_CPU)
-CXXDEFS = -DF_CPU=$(F_CPU)
-
 # Place -I options here
 CINCS = -I/usr/local/avr/
-
 # Compiler flag to set the C Standard level.
 # c89   - "ANSI" C
 # gnu89 - c89 plus GCC extensions
@@ -31,8 +26,7 @@ CSTANDARD = -std=gnu99
 CDEBUG = -g$(DEBUG)
 CWARN = -Wall -Wstrict-prototypes
 CTUNING = -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums
-#CEXTRA = -Wa,-adhlns=$(<:.c=.lst)
-CFLAGS = -mmcu=$(MCU) $(CDEBUG) $(CDEFS) $(CINCS) -O$(OPT) $(CWARN) $(CSTANDARD) $(CEXTRA)
+CFLAGS = -mmcu=$(MCU) $(CDEBUG) $(CDEFS) $(CINCS) -O$(OPT) $(CWARN) $(CSTANDARD) 
 
 #Compiled apps
 #APPS	= simple-httpd
@@ -45,7 +39,7 @@ APPS = hello-world
 DEVS	= enc28j60 #The rest are determined by makefiles for apps
 
 #Compiled libs
-#LIBS	= #Determined by makefiles for apps or drivers
+LIBS	= uart #Determined by makefiles for apps or drivers
 
 #Project specific files
 $(NAME)_SOURCES = main.c clock-arch.c

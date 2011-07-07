@@ -1,7 +1,7 @@
 
 PORT = usb
 #PORT = /dev/ttyUSB5
-TARGET = print.c
+TARGET = blink.c
 SRC = $(TARGET)
 
 MCU = atmega328p
