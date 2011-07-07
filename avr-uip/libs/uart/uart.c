@@ -4,6 +4,7 @@
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <stdarg.h>
 #include <ctype.h>
 #include <string.h>
@@ -18,25 +19,48 @@ char *rx_buffer_pointer_out	= &usart_rx_buffer[0];
 //http://www.nongnu.org/avr-libc/user-manual/group__util__setbaud.html
 //Maybe use setbaud instead
 
-void usart_init(unsigned long baudrate0, unsigned long baudrate1)
+
+
+void usart_init(uint16_t brate)
 { 
-	UCSR0B =(1 << TXEN0 | 1 << RXEN0 | 1<< RXCIE0);
-	UBRR0=(F_CPU / (baudrate0 * 16L) - 1);
-
-        UCSR1B =(1 << TXEN0 | 1 << RXEN0 | 1<< RXCIE0);
-        UBRR1=(F_CPU / (baudrate1 * 16L) - 1);
+	/*--- setup serial ---*/
+	/*baudrate*/
+	BAUDH = (uint8_t) (brate>>8)&0x0F;
+	BAUDL = (uint8_t) (brate);
+	/*enable transmitter and receiver*/
+	CTRLB |= USART_RXEN_bm | USART_TXEN_bm;
+	/*double speed*/
+	CTRLA |= USART_DOUBLE_SPEED_bm;
+	/*chsize 8, 1 stop bit*/
+	CTRLC |= USART_8CH_SIZE_gm;
 }
 
-int uart_putchar0(char c, FILE *stream)
-{
-    while(!(UCSR0A & (1<<UDRE0)));
-    UDR0 = c;
-	return 0;
+void 
+usart_send(unsigned char c){
+	while(!(CTRLA & USART_DATA_EMPTY_bm)) ;
+	DATA = c;
+	return;
 }
 
-int uart_putchar1(char c, FILE *stream)
+void
+usart_print(char *buf){
+	while (*buf)
+		usart_send(*buf++);
+
+	return;
+}
+
+/* === USE USART AS STDOUT === */
+int rs232_stdout_putchar(char c, FILE *stream);
+static FILE usart_stdout = FDEV_SETUP_STREAM(rs232_stdout_putchar,
+					     NULL,
+					     _FDEV_SETUP_WRITE);
+
+int rs232_stdout_putchar(char c, FILE *stream)
 {
-    while(!(UCSR1A & (1<<UDRE1)));
-    UDR1 = c;
-	return 0;
+  usart_send (c);
+  return 0;
+}
+void usart_redirect_stdout () {
+  stdout = &usart_stdout;
 }
