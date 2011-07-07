@@ -14,7 +14,6 @@
 #define BUF ((struct uip_eth_hdr *)&uip_buf[0])
 
 
-//Led on tuxgraphics board
 #define LED_bm (1<<PORTC0)
 #define LEDPORT PORTC
 #define LEDPORT_D DDRC
@@ -23,17 +22,36 @@
 #define led_off()     LEDPORT &= ~LED_bm
 #define led_toggle()  LEDPORT ^= LED_bm
 
+static struct pt blink_thread;
+static struct timer blink_timer;
+
+
+static 
+PT_THREAD(blink(void))
+{
+	PT_BEGIN(&blink_thread);
+
+	led_on();
+	timer_set(&blink_timer, CLOCK_CONF_SECOND);
+	PT_WAIT_UNTIL(&blink_thread, 
+			timer_expired(&blink_timer));
+
+	led_off();
+	timer_set(&blink_timer, CLOCK_CONF_SECOND);
+	PT_WAIT_UNTIL(&blink_thread,
+			timer_expired(&blink_timer));
+
+	PT_END(&blink_thread);
+}
 
 int main(void)
 {
 	clock_init();
 	led_conf();
+	PT_INIT(&blink_thread);
 
 	for(;;){
-		led_on();
-		_delay_ms(1000);
-		led_off();
-		_delay_ms(1000);
+		blink();
 	}
 }
 
