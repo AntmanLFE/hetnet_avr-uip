@@ -8,6 +8,7 @@ static int handle_connection(struct simple_httpd_state *s);
 
 void simple_httpd_init(void)
 {
+	printf("Init simple Http App\n");
 	uip_listen(HTONS(80));
 }
 
@@ -29,6 +30,7 @@ void simple_httpd_appcall(void)
 
 static int handle_connection(struct simple_httpd_state *s)
 {
+	printf("Handle Connection\n");
   PSOCK_BEGIN(&s->p);
   PSOCK_SEND_STR(&s->p, "HTTP/1.0 200 OK\r\n");
   PSOCK_SEND_STR(&s->p, "Content-Type: text/plain\r\n");

@@ -29,11 +29,10 @@ CTUNING = -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums
 CFLAGS = -mmcu=$(MCU) $(CDEBUG) $(CDEFS) $(CINCS) -O$(OPT) $(CWARN) $(CSTANDARD) 
 
 #Compiled apps
-#APPS	= simple-httpd
+APPS	= simple-httpd
 #### webserver.PROGMEM needs 19k of RAM for the default setup
 #APPS	= webserver.PROGMEM
 #APPS	= dhcpc webserver.PROGMEM
-APPS = hello-world
 
 #Compiled drivers
 DEVS	= enc28j60 #The rest are determined by makefiles for apps

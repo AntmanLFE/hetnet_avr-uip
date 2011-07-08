@@ -4,8 +4,8 @@
 //Here we include the header file for the application(s) we use in our project.
 
 //#include "smtp.h"
-#include "hello-world.h"
-//#include "simple-httpd.h"
+//#include "hello-world.h"
+#include "simple-httpd.h"
 //#include "telnetd.h"
 //#include "webserver.h"
 //#include "dhcpc.h"
