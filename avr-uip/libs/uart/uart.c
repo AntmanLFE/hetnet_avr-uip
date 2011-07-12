@@ -25,7 +25,7 @@ void usart_init(uint16_t brate)
 { 
 	/*--- setup serial ---*/
 	/*baudrate*/
-	BAUDH = (uint8_t) (brate>>8)&0x0F;
+	BAUDH = (uint8_t) (brate>>8);
 	BAUDL = (uint8_t) (brate);
 	/*enable transmitter and receiver*/
 	CTRLB |= USART_RXEN_bm | USART_TXEN_bm;
@@ -37,6 +37,7 @@ void usart_init(uint16_t brate)
 
 void 
 usart_send(unsigned char c){
+	if (c == '\n') c='\r';
 	while(!(CTRLA & USART_DATA_EMPTY_bm)) ;
 	DATA = c;
 	return;
