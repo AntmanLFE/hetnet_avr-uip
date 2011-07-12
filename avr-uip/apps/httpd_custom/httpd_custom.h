@@ -2,8 +2,27 @@
 #define __SIMPLE_HTTPD_H__
 #include "psock.h"
 
+#define CONNECTED 0x00
+#define DATA_SENT 0x01
+#define DATA_IN 0x02
+#define STATE_OUTPUT 0x03 
+
+#define ISO_nl      0x0a
+#define ISO_space   0x20
+#define ISO_bang    0x21
+#define ISO_percent 0x25
+#define ISO_period  0x2e
+#define ISO_slash   0x2f
+#define ISO_colon   0x3a
+
 struct simple_httpd_state {
-	struct psock p;
+	/*data fields*/
+	uint8_t buffin[100];
+	uint8_t buffout[100];
+	uint8_t state;
+	/*psock and pthread*/
+	struct pt handle_output, handle_input;
+	struct psock sockin, sockout;
 };
 
 

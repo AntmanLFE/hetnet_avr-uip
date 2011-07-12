@@ -1,1 +1,1 @@
-APP_SOURCES += httpd_custom.c
+APP_SOURCES += httpd_custom.c http-strings.c
