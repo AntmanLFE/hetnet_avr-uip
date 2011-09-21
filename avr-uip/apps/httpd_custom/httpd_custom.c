@@ -31,14 +31,28 @@ PT_THREAD(handle_output(struct simple_httpd_state *s))
 	PSOCK_SEND_STR(&s->sockout, message);
 	printf("handle out3\n");
 	PSOCK_SEND_STR(&s->sockout, "\r\n");
-	PSOCK_SEND_STR(&s->sockout, "<br>Cambia Numero in EEPROM.. <br>\n");
+	PSOCK_SEND_STR(&s->sockout, "<br> You have asked for: ");
+	switch (s->state){
+		case STATE_OUTPUT_TEMP:
+			PSOCK_SEND_STR(&s->sockout, "Temperature</br>\n");
+			PSOCK_SEND_STR(&s->sockout, "<br>Temp = 1</br>\n");
+			break;
+		case STATE_OUTPUT_DIST: 
+			PSOCK_SEND_STR(&s->sockout, "Distance</br>\n");
+			PSOCK_SEND_STR(&s->sockout, "<br>Dist = 2</br>\n");
+			break;
+		case STATE_OUTPUT_MERDA:
+			PSOCK_SEND_STR(&s->sockout, "Merda</br>\n");
+			PSOCK_SEND_STR(&s->sockout, "<br>Merda = 3</br>\n");
+			break;
+	}
 
+	/*
 	PSOCK_SEND_STR(&s->sockout, "<form> Cambia numero: <input type=\"text\" />");
 	PSOCK_SEND_STR(&s->sockout, "<input type=\"submit\" value=\"Submit\" /> </form><br>");
+	*/
 	PSOCK_SEND_STR(&s->sockout, "</body>");
-
 	PSOCK_CLOSE(&s->sockout);
-	printf("handle out4\n");
 	s->state=DATA_SENT;
 	PSOCK_END(&s->sockout);
 }
@@ -47,28 +61,48 @@ static
 PT_THREAD(handle_input(struct simple_httpd_state *s))
 {
   PSOCK_BEGIN(&s->sockin);
-	printf("handle in1\n");
 
   PSOCK_READTO(&s->sockin, ISO_space);
 	printf("%s", s->buffin);
-	printf("handle in2\n");
-
   
   if(strncmp(s->buffin, http_get, 4) != 0) {
     PSOCK_CLOSE_EXIT(&s->sockin);
   }
-	printf("handle in3\n");
+	/*here we get the GET parameter (to next space)*/
   PSOCK_READTO(&s->sockin, ISO_space);
 	printf("\n%s", s->buffin);
+
+	/*
+	 * now sockin contains the get argouments
+	 * Get couples of 'key=value' strings  in the sockin buff
+	 * function is defined in websrv_helper_functions library
+	char get_args_buf[4];
+	find_key_val(&s->buffin, &get_args_buf, 4, "args");
+	printf("\nKey value = %s\n", get_args_buf);
+	*/
+
+	/* Parse the string until we find the '=' char*/
+	printf("Parse string\n");
+	char *get_arg = &s->buffin;
+	while ( *(get_arg++) != '=' );
+	printf("string parsed: %s\n", get_arg);
+
+
 
   if(s->buffin[0] != ISO_slash) {
     PSOCK_CLOSE_EXIT(&s->sockin);
   }
-
-	printf("handle in4\n");
-  /*  httpd_log_file(uip_conn->ripaddr, s->filename);*/
   
-  s->state = STATE_OUTPUT;
+	/* Determinate the output state*/
+	if ( !strcmp(get_arg, "temp")){
+		s->state = STATE_OUTPUT_TEMP;
+
+	}else if ( !strcmp(get_arg, "dist") ){
+		s->state = STATE_OUTPUT_DIST;
+
+	}else if ( !strcmp(get_arg, "merda") ){
+		s->state = STATE_OUTPUT_MERDA;
+	}
 
   while(1) {
     PSOCK_READTO(&s->sockin, ISO_nl);

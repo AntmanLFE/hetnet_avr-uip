@@ -38,7 +38,7 @@ APPS	= httpd_custom
 DEVS	= enc28j60 #The rest are determined by makefiles for apps
 
 #Compiled libs
-LIBS	= uart #Determined by makefiles for apps or drivers
+LIBS	= uart websrv_helper_functions #Determined by makefiles for apps or drivers
 
 #Project specific files
 $(NAME)_SOURCES = main.c clock-arch.c

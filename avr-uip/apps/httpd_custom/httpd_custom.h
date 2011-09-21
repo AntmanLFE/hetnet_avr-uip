@@ -6,6 +6,9 @@
 #define DATA_SENT 0x01
 #define DATA_IN 0x02
 #define STATE_OUTPUT 0x03 
+#define STATE_OUTPUT_TEMP 0x04
+#define STATE_OUTPUT_DIST 0x05
+#define STATE_OUTPUT_MERDA 0x06
 
 #define ISO_nl      0x0a
 #define ISO_space   0x20
