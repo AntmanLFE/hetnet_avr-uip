@@ -5,10 +5,16 @@
 #define CONNECTED 0x00
 #define DATA_SENT 0x01
 #define DATA_IN 0x02
+/*OPUTPUT state identifiers*/
 #define STATE_OUTPUT 0x03 
 #define STATE_OUTPUT_TEMP 0x04
 #define STATE_OUTPUT_DIST 0x05
 #define STATE_OUTPUT_MERDA 0x06
+
+/*Argouments of GET request*/
+#define GET_REQ_TEMP "temp"
+#define GET_REQ_DIST "dist"
+#define GET_REQ_MERDA "merda"
 
 #define ISO_nl      0x0a
 #define ISO_space   0x20

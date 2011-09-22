@@ -41,10 +41,6 @@ PT_THREAD(handle_output(struct simple_httpd_state *s))
 			PSOCK_SEND_STR(&s->sockout, "Distance</br>\n");
 			PSOCK_SEND_STR(&s->sockout, "<br>Dist = 2</br>\n");
 			break;
-		case STATE_OUTPUT_MERDA:
-			PSOCK_SEND_STR(&s->sockout, "Merda</br>\n");
-			PSOCK_SEND_STR(&s->sockout, "<br>Merda = 3</br>\n");
-			break;
 	}
 
 	/*
@@ -83,25 +79,27 @@ PT_THREAD(handle_input(struct simple_httpd_state *s))
 
 	/* Parse the string until we find the '=' char*/
 	printf("Parse string\n");
-	char *get_arg = &s->buffin;
+	char *get_arg = (char *) &s->buffin;
+	
 	while ( *(get_arg++) != '=' );
 	printf("string parsed: %s\n", get_arg);
-
-
 
   if(s->buffin[0] != ISO_slash) {
     PSOCK_CLOSE_EXIT(&s->sockin);
   }
   
 	/* Determinate the output state*/
-	if ( !strcmp(get_arg, "temp")){
+	if ( !strncmp(get_arg, GET_REQ_TEMP,
+				strlen(GET_REQ_TEMP) )){
 		s->state = STATE_OUTPUT_TEMP;
 
-	}else if ( !strcmp(get_arg, "dist") ){
+	}else if ( !strncmp(get_arg, GET_REQ_DIST,
+				strlen(GET_REQ_DIST) )){
 		s->state = STATE_OUTPUT_DIST;
 
-	}else if ( !strcmp(get_arg, "merda") ){
-		s->state = STATE_OUTPUT_MERDA;
+	}else{
+		/*default is temp*/
+		s->state = STATE_OUTPUT_TEMP;
 	}
 
   while(1) {
