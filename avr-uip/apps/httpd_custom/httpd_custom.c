@@ -21,33 +21,33 @@ PT_THREAD(handle_output(struct simple_httpd_state *s))
 {
 	PSOCK_BEGIN(&s->sockout);
 	/*get value stored in eeprom and build string*/
-	data_sram = eeprom_read_byte((uint8_t *)&data);
-	sprintf(message,message, data_sram);
+	//data_sram = eeprom_read_byte((uint8_t *)&data);
+	//sprintf(message,message, data_sram);
+	
+  PSOCK_SEND_STR(&s->sockout, "HTTP/1.0 200 OK\r\n");
+  PSOCK_SEND_STR(&s->sockout, "Content-Type: text/html\r\n");
+  PSOCK_SEND_STR(&s->sockout, "\r\n");
 
 	printf("handle out1\n");
 
-	PSOCK_SEND_STR(&s->sockout, "<html><head><title>:: A web page in an AVR ::</title> </head><body>");
+	PSOCK_SEND_STR(&s->sockout, "<html><head><title>:: A web page in an AVR ::</title> </head><body>\r\n");
 	printf("handle out2\n");
-	PSOCK_SEND_STR(&s->sockout, message);
-	printf("handle out3\n");
-	PSOCK_SEND_STR(&s->sockout, "\r\n");
-	PSOCK_SEND_STR(&s->sockout, "<br> You have asked for: ");
-	switch (s->state){
-		case STATE_OUTPUT_TEMP:
-			PSOCK_SEND_STR(&s->sockout, "Temperature</br>\n");
+	//PSOCK_SEND_STR(&s->sockout, message);
+	//PSOCK_SEND_STR(&s->sockout, "\r\n");
+	PSOCK_SEND_STR(&s->sockout, "<br> <h2>You have asked for:</br>\r\n");
+
+	if (s->state == STATE_OUTPUT_TEMP){
+			PSOCK_SEND_STR(&s->sockout, "<br>Temperature</br></h2>\n");
 			PSOCK_SEND_STR(&s->sockout, "<br>Temp = 1</br>\n");
-			break;
-		case STATE_OUTPUT_DIST: 
-			PSOCK_SEND_STR(&s->sockout, "Distance</br>\n");
-			PSOCK_SEND_STR(&s->sockout, "<br>Dist = 2</br>\n");
-			break;
+	}
+	else if (s->state == STATE_OUTPUT_DIST){
+			PSOCK_SEND_STR(&s->sockout, "<br>Distance</br></h2>\r\n");
+			PSOCK_SEND_STR(&s->sockout, "<br>Dist = 2</br>\r\n");
 	}
 
-	/*
-	PSOCK_SEND_STR(&s->sockout, "<form> Cambia numero: <input type=\"text\" />");
-	PSOCK_SEND_STR(&s->sockout, "<input type=\"submit\" value=\"Submit\" /> </form><br>");
-	*/
-	PSOCK_SEND_STR(&s->sockout, "</body>");
+	PSOCK_SEND_STR(&s->sockout, "</body></html>\r\n");
+	printf("handle out3\n");
+
 	PSOCK_CLOSE(&s->sockout);
 	s->state=DATA_SENT;
 	PSOCK_END(&s->sockout);
@@ -59,14 +59,15 @@ PT_THREAD(handle_input(struct simple_httpd_state *s))
   PSOCK_BEGIN(&s->sockin);
 
   PSOCK_READTO(&s->sockin, ISO_space);
-	printf("%s", s->buffin);
+	printf("---Buffin---\n%s\n----End Buffin----\n\n", s->buffin);
   
   if(strncmp(s->buffin, http_get, 4) != 0) {
     PSOCK_CLOSE_EXIT(&s->sockin);
   }
 	/*here we get the GET parameter (to next space)*/
   PSOCK_READTO(&s->sockin, ISO_space);
-	printf("\n%s", s->buffin);
+
+	printf("\n\nAgain Buffin:\n%s\nEndBuffin\n\n", s->buffin);
 
 	/*
 	 * now sockin contains the get argouments
@@ -77,35 +78,39 @@ PT_THREAD(handle_input(struct simple_httpd_state *s))
 	printf("\nKey value = %s\n", get_args_buf);
 	*/
 
-	/* Parse the string until we find the '=' char*/
-	printf("Parse string\n");
-	char *get_arg = (char *) &s->buffin;
-	
-	while ( *(get_arg++) != '=' );
-	printf("string parsed: %s\n", get_arg);
-
   if(s->buffin[0] != ISO_slash) {
     PSOCK_CLOSE_EXIT(&s->sockin);
   }
+
+	/* Parse the string until we find the '=' char*/
+	char *get_arg = (char *) &s->buffin;
+	while ( *(get_arg++) != '=' );
+	printf("string parsed: %s\n", get_arg);
+
   
 	/* Determinate the output state*/
 	if ( !strncmp(get_arg, GET_REQ_TEMP,
 				strlen(GET_REQ_TEMP) )){
 		s->state = STATE_OUTPUT_TEMP;
+		printf("Temp State\n");
 
 	}else if ( !strncmp(get_arg, GET_REQ_DIST,
 				strlen(GET_REQ_DIST) )){
 		s->state = STATE_OUTPUT_DIST;
+		printf("Dist State\n");
 
 	}else{
 		/*default is temp*/
 		s->state = STATE_OUTPUT_TEMP;
+		printf("Default State\n");
 	}
 
+	
   while(1) {
     PSOCK_READTO(&s->sockin, ISO_nl);
 		printf("handle in5\n");
   }
+	
   
 	printf("handle in7\n");
   PSOCK_END(&s->sockin);
@@ -160,11 +165,11 @@ handle_connection(struct simple_httpd_state *s)
 	}else if (uip_connected()){
 		printf("connected 2\n");
 	}else if (uip_poll()){
-		printf("poll\n");
+		//printf("poll\n");
 	}
 
   handle_input(s);
-  if(s->state == STATE_OUTPUT) {
+  if(s->state >= STATE_OUTPUT) {
     handle_output(s);
  }
 	return 0;
