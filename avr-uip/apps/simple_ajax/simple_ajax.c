@@ -49,7 +49,7 @@ PT_THREAD(handle_output(struct simple_httpd_state *s))
 		PSOCK_SEND_STR(&s->sockout, "Content-Type: text/plain\r\n");
   	PSOCK_SEND_STR(&s->sockout, "\r\n");
 		char reading[] = "Temperature is %d\n";
-		sprintf(reading, reading, counter);
+		sprintf(reading, reading, range);
 		PSOCK_SEND_STR(&s->sockout, reading);
 	}else if (s->state == STATE_OUTPUT_DIST){
 
@@ -145,6 +145,11 @@ void simple_httpd_appcall(void)
 	if (uip_closed() || uip_aborted() || uip_timedout()){
 	}else if(uip_connected()) {
 		printf("Connected\n");
+		/*
+		 *  - Init protosocket
+		 *  - Init input and output threads
+		 *  - Init range finder sensor thread
+		 */
 		PSOCK_INIT(&s->sockin, s->buffin, sizeof(s->buffin));
 		PSOCK_INIT(&s->sockout, s->buffout, sizeof(s->buffout));
 

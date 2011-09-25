@@ -14,6 +14,7 @@
 #include <string.h>
 #define BUF ((struct uip_eth_hdr *)&uip_buf[0])
 
+/* === MACROS AND DATA ===*/
 /* --- Led handling functions ---*/
 #define LED_bm (1<<PORTC0)
 #define LEDPORT PORTC
@@ -22,12 +23,17 @@
 #define led_on() 	    LEDPORT |= LED_bm
 #define led_off()     LEDPORT &= ~LED_bm
 #define led_toggle()  LEDPORT ^= LED_bm
-
 /* --- Protothread and timers ---*/
 static struct pt blink_thread;
 static struct timer blink_timer;
+static struct pt distance_thread;
+static struct timer distance_timer;
+/* --- measured distance ---*/
+int range;
+uint8_t setup;
 
 
+/* === PROTOTHREADS  ===*/
 /* ---  Blink protothread ---*/
 static 
 PT_THREAD(blink(void))
@@ -47,6 +53,37 @@ PT_THREAD(blink(void))
 	PT_END(&blink_thread);
 }
 
+/* --- Distance protothread ---*/
+PT_THREAD(read_distance(void))
+{
+	PT_BEGIN(&distance_thread);
+
+	if (setup){
+		/* --- setup ADC --- */
+		//TODO
+		//
+		/* --- wait for sensor to wake up ---*/
+		timer_set(&distance_timer, 200);
+		PT_WAIT_UNTIL(&distance_thread, 
+				timer_expired(&distance_thread));
+	}
+
+	/* --- Start continuous reading --- */
+	/* --- reading timer --- */
+	timer_set(&distance_timer, 100);
+	PT_WAIT_UNTIL(&distance_thread, 
+		timer_expired(&distance_thread));
+
+	/* --- get value frome ADC and convert ---*/
+	uint8_t adc = 100;//TODO ADC READ
+	range = adc*(2.54);
+	range = range/(6.4);
+
+	PT_END(&distance_thread);
+}
+	
+
+
 /* === MAIN === */
 int main(int argc, char *argv[])
 {
@@ -59,6 +96,7 @@ int main(int argc, char *argv[])
 			UIP_ETHADDR2, UIP_ETHADDR3,
 			UIP_ETHADDR4, UIP_ETHADDR5};
 	struct timer periodic_timer, arp_timer;
+	range = 10;
 
 	/*--- device setup ---*/
 	clock_init();
@@ -90,11 +128,16 @@ int main(int argc, char *argv[])
   uip_setnetmask(ipaddr);
 
 	PT_INIT(&blink_thread);
+	PT_INIT(&distance_thread);
 	blink();
+	setup=1;
+	read_distance();
+	setup=0;
 
 
 	while(1){
 		blink();
+		read_distance();
 		uip_len = network_read();
 
 		if(uip_len > 0) {

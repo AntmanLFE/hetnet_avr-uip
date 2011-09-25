@@ -35,6 +35,9 @@ struct simple_httpd_state {
 };
 
 
+extern int range;
+
+
 void simple_httpd_appcall(void);
 void simple_httpd_init(void);
 
