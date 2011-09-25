@@ -3,7 +3,7 @@
 
 //Here we include the header file for the application(s) we use in our project.
 
-#include "httpd_custom.h"
+#include "simple_ajax.h"
 //#include "smtp.h"
 //#include "hello-world.h"
 //#include "simple-httpd.h"

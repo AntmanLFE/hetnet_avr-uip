@@ -4,7 +4,7 @@
 #include <avr/eeprom.h>
 
 #include "uip.h"
-#include "httpd_custom.h"
+#include "simple_ajax.h"
 #include "http-strings.h"
 
 
@@ -13,32 +13,47 @@ static int handle_connection(struct simple_httpd_state *s);
 //static int handle_output(struct simple_httpd_state *);
 
 static char message[] = "The number stored in in EEPROM is: %d\r\n";
+static int counter = 0;
 uint8_t EEMEM data;
 volatile static uint8_t data_sram;
+
+int inc_counter(){
+	return counter++;
+}
 
 static  
 PT_THREAD(handle_output(struct simple_httpd_state *s))
 {
 	PSOCK_BEGIN(&s->sockout);
-	/*get value stored in eeprom and build string*/
-	//data_sram = eeprom_read_byte((uint8_t *)&data);
-	//sprintf(message,message, data_sram);
-	
-  PSOCK_SEND_STR(&s->sockout, "HTTP/1.0 200 OK\r\n");
-  PSOCK_SEND_STR(&s->sockout, "Content-Type: text/html\r\n");
-  PSOCK_SEND_STR(&s->sockout, "\r\n");
 
-	printf("handle out1\n");
+	if (s->state == STATE_OUTPUT_START){
+		printf("html content\n");
+		/* Write WEB Page Here*/
+  	PSOCK_SEND_STR(&s->sockout, "HTTP/1.0 200 OK\r\n");
+  	PSOCK_SEND_STR(&s->sockout, "Content-Type: text/html\r\n");
+  	PSOCK_SEND_STR(&s->sockout, "\r\n");
+		PSOCK_SEND_STR(&s->sockout, "<html><head><title>:: A web page in an AVR ::</title> </head><body>\r\n");
+		PSOCK_SEND_STR(&s->sockout, "<script type=\"text/javascript\">\r\n");
+		PSOCK_SEND_STR(&s->sockout, "var http = false;\n");
+		PSOCK_SEND_STR(&s->sockout, "http = new XMLHttpRequest();\r\n");
+		PSOCK_SEND_STR(&s->sockout, "function replace() {\r\n");
+		PSOCK_SEND_STR(&s->sockout, "http.open(\"GET\", \"192.168.5.10/?args=temp\", true);\r\n");
+		PSOCK_SEND_STR(&s->sockout,"http.onreadystatechange=function() {\nif(http.readyState == 4) {\ndocument.getElementById('foo').innerHTML = http.responseText;\n}\n}\nhttp.send(null);\r\n");
+		PSOCK_SEND_STR(&s->sockout,	"setTimeout (\"replace()\", 1000)};\n</script>");
+		PSOCK_SEND_STR(&s->sockout,	"<script type=\"text/javascript\">\n setTimeout (\"replace()\", 1000);\r\n</script>\r\n");
+		PSOCK_SEND_STR(&s->sockout, "<div id=\"foo\">\n Temperature is \n</div>\r\n");
 
-	PSOCK_SEND_STR(&s->sockout, "<html><head><title>:: A web page in an AVR ::</title> </head><body>\r\n");
-	printf("handle out2\n");
+	}else if (s->state == STATE_OUTPUT_TEMP){
+		printf("Text Contet\n");
+  	PSOCK_SEND_STR(&s->sockout, "HTTP/1.0 200 OK\r\n");
+		PSOCK_SEND_STR(&s->sockout, "Content-Type: text/plain\r\n");
+  	PSOCK_SEND_STR(&s->sockout, "\r\n");
+		char reading[] = "Temperature is %d\n";
+		sprintf(reading, reading, counter);
+		PSOCK_SEND_STR(&s->sockout, reading);
+	}else if (s->state == STATE_OUTPUT_DIST){
 
-	/* Write WEB Page Here*/
-	PSOCK_SEND_STR(&s->sockout, "<script type=\"text/javascript\">\r\n");
-	PSOCK_SEND_STR(&s->sockout, "function replace() {\r\n");
-	PSOCK_SEND_STR(&s->sockout, " document.getElementById('foo').innerHTML = \"Hello, <b>AJAX</b> world!\";\n}\n</script>\r\n");
-	PSOCK_SEND_STR(&s->sockout, "<p><a href=\"javascript:replace()\">Replace Text</a></p>\r\n");
-	PSOCK_SEND_STR(&s->sockout, "<div id=\"foo\">\n Hello, world!\n</div>\r\n");
+	}
 
 	PSOCK_SEND_STR(&s->sockout, "</body></html>\r\n");
 	printf("handle out3\n");
@@ -46,6 +61,7 @@ PT_THREAD(handle_output(struct simple_httpd_state *s))
 	PSOCK_CLOSE(&s->sockout);
 	s->state=DATA_SENT;
 	PSOCK_END(&s->sockout);
+
 }
  
 static 
@@ -54,7 +70,7 @@ PT_THREAD(handle_input(struct simple_httpd_state *s))
   PSOCK_BEGIN(&s->sockin);
 
   PSOCK_READTO(&s->sockin, ISO_space);
-	printf("---Buffin---\n%s\n----End Buffin----\n\n", s->buffin);
+//	printf("---Buffin---\n%s\n----End Buffin----\n\n", s->buffin);
   
   if(strncmp(s->buffin, http_get, 4) != 0) {
     PSOCK_CLOSE_EXIT(&s->sockin);
@@ -62,7 +78,7 @@ PT_THREAD(handle_input(struct simple_httpd_state *s))
 	/*here we get the GET parameter (to next space)*/
   PSOCK_READTO(&s->sockin, ISO_space);
 
-	printf("\n\nAgain Buffin:\n%s\nEndBuffin\n\n", s->buffin);
+	//printf("\n\nAgain Buffin:\n%s\nEndBuffin\n\n", s->buffin);
 
 	/*
 	 * now sockin contains the get argouments
@@ -87,6 +103,7 @@ PT_THREAD(handle_input(struct simple_httpd_state *s))
 	if ( !strncmp(get_arg, GET_REQ_TEMP,
 				strlen(GET_REQ_TEMP) )){
 		s->state = STATE_OUTPUT_TEMP;
+		inc_counter();
 		printf("Temp State\n");
 
 	}else if ( !strncmp(get_arg, GET_REQ_DIST,
@@ -96,20 +113,17 @@ PT_THREAD(handle_input(struct simple_httpd_state *s))
 
 	}else{
 		/*default is temp*/
-		s->state = STATE_OUTPUT_TEMP;
+		s->state = STATE_OUTPUT_START;
 		printf("Default State\n");
 	}
 
 	
   while(1) {
     PSOCK_READTO(&s->sockin, ISO_nl);
-		printf("handle in5\n");
   }
 	
   
-	printf("handle in7\n");
   PSOCK_END(&s->sockin);
-	printf("handle in8\n");
 }
 
 void simple_httpd_init(void)
@@ -152,13 +166,13 @@ handle_connection(struct simple_httpd_state *s)
 	if (uip_aborted() || uip_timedout() || uip_closed()) {;
 	}
 	else if (uip_rexmit()){
-		printf("rexmit\n");
+		//printf("rexmit\n");
 	}else if (uip_newdata()){
-		printf("newdata\n");
+		//printf("newdata\n");
 	}else if (uip_acked()){
-		printf("ack\n");
+	//	printf("ack\n");
 	}else if (uip_connected()){
-		printf("connected 2\n");
+	//	printf("connected 2\n");
 	}else if (uip_poll()){
 		//printf("poll\n");
 	}

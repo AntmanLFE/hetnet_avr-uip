@@ -9,7 +9,7 @@
 #define STATE_OUTPUT 0x03 
 #define STATE_OUTPUT_TEMP 0x04
 #define STATE_OUTPUT_DIST 0x05
-#define STATE_OUTPUT_MERDA 0x06
+#define STATE_OUTPUT_START 0x06
 
 /*Argouments of GET request*/
 #define GET_REQ_TEMP "temp"
