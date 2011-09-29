@@ -32,7 +32,8 @@ static struct timer blink_timer;
 static struct pt distance_thread;
 static struct timer distance_timer;
 /* --- measured distance ---*/
-uint16_t range;
+int range;
+int setup;
 
 
 /* === PROTOTHREADS  ===*/
@@ -43,11 +44,13 @@ PT_THREAD(blink(void))
 	PT_BEGIN(&blink_thread);
 
 		led_on();
+		printf("led ON\n");
 		timer_set(&blink_timer, CLOCK_CONF_SECOND);
 		PT_WAIT_UNTIL(&blink_thread, 
 				timer_expired(&blink_timer));
 
 		led_off();
+		printf("Led OFF\n");
 		timer_set(&blink_timer, CLOCK_CONF_SECOND);
 		PT_WAIT_UNTIL(&blink_thread,
 				timer_expired(&blink_timer));
@@ -56,30 +59,14 @@ PT_THREAD(blink(void))
 }
 
 /* --- Distance protothread ---*/
-PT_THREAD(read_distance(uint8_t setup))
+PT_THREAD(read_distance())
 {
-	PT_BEGIN(&distance_thread);
-
-	if (setup){
-		/* --- setup ADC ---
-		 * 	- 1.1V internale Refernce
-		 * 	- ADC1 Input channel
-		 * 	- Enable ADC
-	   */
-		ADMUX  |= _BV(REFS1) | _BV(REFS0);
-		ADMUX  |= _BV(MUX0);
-		ADCSRA |= _BV(ADEN);
-		/* --- wait for sensor to wake up ---*/
-		timer_set(&distance_timer, 200);
-		PT_WAIT_UNTIL(&distance_thread, 
-				timer_expired(&distance_thread));
-	}
-
 	/* --- Start continuous reading --- */
+	PT_BEGIN(&distance_thread);
 	/* --- reading timer --- */
-	timer_set(&distance_timer, 100);
+	timer_set(&distance_timer, CLOCK_CONF_SECOND);
 	PT_WAIT_UNTIL(&distance_thread, 
-		timer_expired(&distance_thread));
+		timer_expired(&distance_timer));
 
 	/* --- get value frome ADC and convert ---
 	 * 	- start conversion
@@ -90,14 +77,15 @@ PT_THREAD(read_distance(uint8_t setup))
 	ADCSRA |= _BV(ADSC);
 	while ( (ADCSRA & _BV(ADIF))){;}
 	ADCSRA |= _BV(ADIF);
-	adc =  (ADCL) | ((ADCH&0x03)<<8);
+	range =  110;// (ADCL) | ((ADCH&0x03)<<8);
 	/* Let's do the math:
 	 * 1 hinc = 2.54 cm
 	 * ( (Vcc/512)=6.4mV)\1 inch  6.4mV\2.54 cm
 	 * distance = adc / (6.4/2.54) = adc * (2.54/6.4)
 	 *			   ~= adc*0.40
 	 */
-	range = adc*(0.40);
+	printf("Do Conversion\n");
+	printf("Post Conversion %d\n", range);
 
 	PT_END(&distance_thread);
 }
@@ -125,6 +113,7 @@ int main(int argc, char *argv[])
 
 	usart_init(brate);
 	usart_redirect_stdout();
+	printf("\n\n****************************\n\n");
 	printf("Starting uIP \n");
 	printf("Configuring clock \n");
 	led_conf();
@@ -147,15 +136,19 @@ int main(int argc, char *argv[])
   uip_ipaddr(ipaddr, 255,255,255,0);
   uip_setnetmask(ipaddr);
 
+		ADMUX  |= _BV(REFS1) | _BV(REFS0);
+		ADMUX  |= _BV(MUX0);
+		ADCSRA |= _BV(ADEN);
+
 	PT_INIT(&blink_thread);
 	PT_INIT(&distance_thread);
 	blink();
-	read_distance(0xf);
-
+	setup = 1;	
+	read_distance();
 
 	while(1){
 		blink();
-		read_distance(0x0);
+		read_distance();
 		uip_len = network_read();
 
 		if(uip_len > 0) {

@@ -34,8 +34,7 @@ struct simple_httpd_state {
 	struct psock sockin, sockout;
 };
 
-
-extern uint16_t range;
+extern int range;
 
 
 void simple_httpd_appcall(void);
