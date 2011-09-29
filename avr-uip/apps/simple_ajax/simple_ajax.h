@@ -35,7 +35,7 @@ struct simple_httpd_state {
 };
 
 
-extern int range;
+extern uint16_t range;
 
 
 void simple_httpd_appcall(void);

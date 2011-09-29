@@ -23,14 +23,16 @@
 #define led_on() 	    LEDPORT |= LED_bm
 #define led_off()     LEDPORT &= ~LED_bm
 #define led_toggle()  LEDPORT ^= LED_bm
+
+/* --- ADC fields --- */
+
 /* --- Protothread and timers ---*/
 static struct pt blink_thread;
 static struct timer blink_timer;
 static struct pt distance_thread;
 static struct timer distance_timer;
 /* --- measured distance ---*/
-int range;
-uint8_t setup;
+uint16_t range;
 
 
 /* === PROTOTHREADS  ===*/
@@ -54,14 +56,19 @@ PT_THREAD(blink(void))
 }
 
 /* --- Distance protothread ---*/
-PT_THREAD(read_distance(void))
+PT_THREAD(read_distance(uint8_t setup))
 {
 	PT_BEGIN(&distance_thread);
 
 	if (setup){
-		/* --- setup ADC --- */
-		//TODO
-		//
+		/* --- setup ADC ---
+		 * 	- 1.1V internale Refernce
+		 * 	- ADC1 Input channel
+		 * 	- Enable ADC
+	   */
+		ADMUX  |= _BV(REFS1) | _BV(REFS0);
+		ADMUX  |= _BV(MUX0);
+		ADCSRA |= _BV(ADEN);
 		/* --- wait for sensor to wake up ---*/
 		timer_set(&distance_timer, 200);
 		PT_WAIT_UNTIL(&distance_thread, 
@@ -74,10 +81,23 @@ PT_THREAD(read_distance(void))
 	PT_WAIT_UNTIL(&distance_thread, 
 		timer_expired(&distance_thread));
 
-	/* --- get value frome ADC and convert ---*/
-	uint8_t adc = 100;//TODO ADC READ
-	range = adc*(2.54);
-	range = range/(6.4);
+	/* --- get value frome ADC and convert ---
+	 * 	- start conversion
+	 * 	- wait for conversion end
+	 * 	- clear interrupt flag
+	 */
+	uint16_t adc;
+	ADCSRA |= _BV(ADSC);
+	while ( (ADCSRA & _BV(ADIF))){;}
+	ADCSRA |= _BV(ADIF);
+	adc =  (ADCL) | ((ADCH&0x03)<<8);
+	/* Let's do the math:
+	 * 1 hinc = 2.54 cm
+	 * ( (Vcc/512)=6.4mV)\1 inch  6.4mV\2.54 cm
+	 * distance = adc / (6.4/2.54) = adc * (2.54/6.4)
+	 *			   ~= adc*0.40
+	 */
+	range = adc*(0.40);
 
 	PT_END(&distance_thread);
 }
@@ -130,14 +150,12 @@ int main(int argc, char *argv[])
 	PT_INIT(&blink_thread);
 	PT_INIT(&distance_thread);
 	blink();
-	setup=1;
-	read_distance();
-	setup=0;
+	read_distance(0xf);
 
 
 	while(1){
 		blink();
-		read_distance();
+		read_distance(0x0);
 		uip_len = network_read();
 
 		if(uip_len > 0) {

@@ -48,7 +48,7 @@ PT_THREAD(handle_output(struct simple_httpd_state *s))
   	PSOCK_SEND_STR(&s->sockout, "HTTP/1.0 200 OK\r\n");
 		PSOCK_SEND_STR(&s->sockout, "Content-Type: text/plain\r\n");
   	PSOCK_SEND_STR(&s->sockout, "\r\n");
-		char reading[] = "Temperature is %d\n";
+		char reading[] = "Temperature is %16u\n";
 		sprintf(reading, reading, range);
 		PSOCK_SEND_STR(&s->sockout, reading);
 	}else if (s->state == STATE_OUTPUT_DIST){
