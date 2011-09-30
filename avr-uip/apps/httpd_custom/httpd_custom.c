@@ -9,12 +9,7 @@
 
 
 static int handle_connection(struct simple_httpd_state *s);
-//static int handle_input(struct simple_httpd_state *);
-//static int handle_output(struct simple_httpd_state *);
-
-static char message[] = "The number stored in in EEPROM is: %d\r\n";
-uint8_t EEMEM data;
-volatile static uint8_t data_sram;
+static char to_write[100];
 
 static  
 PT_THREAD(handle_output(struct simple_httpd_state *s))
@@ -28,17 +23,16 @@ PT_THREAD(handle_output(struct simple_httpd_state *s))
   PSOCK_SEND_STR(&s->sockout, "Content-Type: text/html\r\n");
   PSOCK_SEND_STR(&s->sockout, "\r\n");
 
-	printf("handle out1\n");
 
 	PSOCK_SEND_STR(&s->sockout, "<html><head><title>:: A web page in an AVR ::</title> </head><body>\r\n");
-	printf("handle out2\n");
 	//PSOCK_SEND_STR(&s->sockout, message);
 	//PSOCK_SEND_STR(&s->sockout, "\r\n");
 	PSOCK_SEND_STR(&s->sockout, "<br> <h2>You have asked for:</br>\r\n");
 
 	if (s->state == STATE_OUTPUT_TEMP){
 			PSOCK_SEND_STR(&s->sockout, "<br>Temperature</br></h2>\n");
-			PSOCK_SEND_STR(&s->sockout, "<br>Temp = 1</br>\n");
+			sprintf(&to_write, "<br>Temp = %16u </br>\r\n", range);
+			PSOCK_SEND_STR(&s->sockout, to_write);
 	}
 	else if (s->state == STATE_OUTPUT_DIST){
 			PSOCK_SEND_STR(&s->sockout, "<br>Distance</br></h2>\r\n");
@@ -46,7 +40,6 @@ PT_THREAD(handle_output(struct simple_httpd_state *s))
 	}
 
 	PSOCK_SEND_STR(&s->sockout, "</body></html>\r\n");
-	printf("handle out3\n");
 
 	PSOCK_CLOSE(&s->sockout);
 	s->state=DATA_SENT;
@@ -59,7 +52,6 @@ PT_THREAD(handle_input(struct simple_httpd_state *s))
   PSOCK_BEGIN(&s->sockin);
 
   PSOCK_READTO(&s->sockin, ISO_space);
-	printf("---Buffin---\n%s\n----End Buffin----\n\n", s->buffin);
   
   if(strncmp(s->buffin, http_get, 4) != 0) {
     PSOCK_CLOSE_EXIT(&s->sockin);
@@ -67,7 +59,6 @@ PT_THREAD(handle_input(struct simple_httpd_state *s))
 	/*here we get the GET parameter (to next space)*/
   PSOCK_READTO(&s->sockin, ISO_space);
 
-	printf("\n\nAgain Buffin:\n%s\nEndBuffin\n\n", s->buffin);
 
 	/*
 	 * now sockin contains the get argouments
@@ -108,19 +99,15 @@ PT_THREAD(handle_input(struct simple_httpd_state *s))
 	
   while(1) {
     PSOCK_READTO(&s->sockin, ISO_nl);
-		printf("handle in5\n");
   }
 	
   
-	printf("handle in7\n");
   PSOCK_END(&s->sockin);
-	printf("handle in8\n");
 }
 
 void simple_httpd_init(void)
 {
 	//printf("Init simple Http App\n");
-	eeprom_write_byte(&data, 10);
 	uip_listen(HTONS(80));
 }
 
@@ -157,15 +144,10 @@ handle_connection(struct simple_httpd_state *s)
 	if (uip_aborted() || uip_timedout() || uip_closed()) {;
 	}
 	else if (uip_rexmit()){
-		printf("rexmit\n");
 	}else if (uip_newdata()){
-		printf("newdata\n");
 	}else if (uip_acked()){
-		printf("ack\n");
 	}else if (uip_connected()){
-		printf("connected 2\n");
 	}else if (uip_poll()){
-		//printf("poll\n");
 	}
 
   handle_input(s);

@@ -34,10 +34,10 @@ struct simple_httpd_state {
 	struct psock sockin, sockout;
 };
 
-extern int range;
+extern uint16_t range;
 
 
-void simple_httpd_appcall(void);
+void simple_ajax_init(void);
 void simple_httpd_init(void);
 
 #if defined PORT_APP_MAPPER

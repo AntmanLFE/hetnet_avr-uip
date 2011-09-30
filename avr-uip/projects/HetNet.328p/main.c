@@ -32,7 +32,7 @@ static struct timer blink_timer;
 static struct pt distance_thread;
 static struct timer distance_timer;
 /* --- measured distance ---*/
-int range;
+uint16_t range=0;
 int setup;
 
 
@@ -59,10 +59,22 @@ PT_THREAD(blink(void))
 }
 
 /* --- Distance protothread ---*/
-PT_THREAD(read_distance())
+PT_THREAD(read_distance(uint8_t setup))
 {
 	/* --- Start continuous reading --- */
 	PT_BEGIN(&distance_thread);
+
+	if (setup){
+		ADMUX  |= _BV(REFS1) | _BV(REFS0);
+		ADMUX  |= _BV(MUX0);
+		ADCSRA |= _BV(ADEN);
+
+		timer_set(&distance_timer, (uint8_t)
+				(CLOCK_CONF_SECOND/2));
+		PT_WAIT_UNTIL(&distance_thread, 
+			timer_expired(&distance_timer));
+	}
+
 	/* --- reading timer --- */
 	timer_set(&distance_timer, CLOCK_CONF_SECOND);
 	PT_WAIT_UNTIL(&distance_thread, 
@@ -73,19 +85,19 @@ PT_THREAD(read_distance())
 	 * 	- wait for conversion end
 	 * 	- clear interrupt flag
 	 */
-	uint16_t adc;
 	ADCSRA |= _BV(ADSC);
 	while ( (ADCSRA & _BV(ADIF))){;}
 	ADCSRA |= _BV(ADIF);
-	range =  110;// (ADCL) | ((ADCH&0x03)<<8);
+	uint16_t adc =  ((ADCL) | ((ADCH&0x03)<<8));
 	/* Let's do the math:
 	 * 1 hinc = 2.54 cm
 	 * ( (Vcc/512)=6.4mV)\1 inch  6.4mV\2.54 cm
 	 * distance = adc / (6.4/2.54) = adc * (2.54/6.4)
 	 *			   ~= adc*0.40
 	 */
-	printf("Do Conversion\n");
-	printf("Post Conversion %d\n", range);
+	float fact = 2.5;
+	range =  (adc);
+	printf("Range %d\n", range);
 
 	PT_END(&distance_thread);
 }
@@ -104,7 +116,6 @@ int main(int argc, char *argv[])
 			UIP_ETHADDR2, UIP_ETHADDR3,
 			UIP_ETHADDR4, UIP_ETHADDR5};
 	struct timer periodic_timer, arp_timer;
-	range = 10;
 
 	/*--- device setup ---*/
 	clock_init();
@@ -126,7 +137,7 @@ int main(int argc, char *argv[])
 	printf("Set EHT mac Address\n");
 	uip_setethaddr(mac);
 
-	simple_httpd_init();
+	simple_ajax_init();
 	printf("Configuring HTTPD daemon \n");
 	
   uip_ipaddr(ipaddr, 192,168,5,10);
@@ -136,19 +147,16 @@ int main(int argc, char *argv[])
   uip_ipaddr(ipaddr, 255,255,255,0);
   uip_setnetmask(ipaddr);
 
-		ADMUX  |= _BV(REFS1) | _BV(REFS0);
-		ADMUX  |= _BV(MUX0);
-		ADCSRA |= _BV(ADEN);
+
 
 	PT_INIT(&blink_thread);
 	PT_INIT(&distance_thread);
 	blink();
-	setup = 1;	
-	read_distance();
+	read_distance(1);
 
 	while(1){
 		blink();
-		read_distance();
+		read_distance(0);
 		uip_len = network_read();
 
 		if(uip_len > 0) {

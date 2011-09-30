@@ -25,11 +25,13 @@ CINCS = -I/usr/local/avr/
 CSTANDARD = -std=gnu99
 CDEBUG = -g$(DEBUG)
 CWARN = -Wall -Wstrict-prototypes 
-CTUNING = -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums
+
+CTUNING = -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums -Wl --defsym=__floatunsisf=__floatunssisf
 CFLAGS = -mmcu=$(MCU) $(CDEBUG) $(CDEFS) $(CINCS) -O$(OPT) $(CWARN) $(CSTANDARD) 
 
+
 #Compiled apps
-APPS	= simple_ajax
+APPS	=  simple_ajax
 #### webserver.PROGMEM needs 19k of RAM for the default setup
 #APPS	= webserver.PROGMEM
 #APPS	= dhcpc webserver.PROGMEM

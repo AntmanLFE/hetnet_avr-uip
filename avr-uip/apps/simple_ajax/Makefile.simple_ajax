@@ -1,1 +1,1 @@
-APP_SOURCES += simple_ajax.c http-strings.c
+APP_SOURCES += simple_ajax.c

@@ -7,19 +7,12 @@
 #include "simple_ajax.h"
 #include "http-strings.h"
 
+const char http_get[5] = 
+/* "GET " */
+{0x47, 0x45, 0x54, 0x20, };
 
 static int handle_connection(struct simple_httpd_state *s);
-//static int handle_input(struct simple_httpd_state *);
-//static int handle_output(struct simple_httpd_state *);
-
-static char message[] = "The number stored in in EEPROM is: %d\r\n";
-static int counter = 0;
-uint8_t EEMEM data;
-volatile static uint8_t data_sram;
-
-int inc_counter(){
-	return 0;//counter++;
-}
+static char to_write[10];
 
 static  
 PT_THREAD(handle_output(struct simple_httpd_state *s))
@@ -36,28 +29,40 @@ PT_THREAD(handle_output(struct simple_httpd_state *s))
 		PSOCK_SEND_STR(&s->sockout, "<script type=\"text/javascript\">\r\n");
 		PSOCK_SEND_STR(&s->sockout, "var http = false;\n");
 		PSOCK_SEND_STR(&s->sockout, "http = new XMLHttpRequest();\r\n");
+		PSOCK_SEND_STR(&s->sockout, "function mul(val) {res = parseInt(val); if(res>0){ return \"Distance is: \"+res*0.4+\" cm\";}else{return \"Out of bounds\"}};\r\n");
 		PSOCK_SEND_STR(&s->sockout, "function replace() {\r\n");
-		PSOCK_SEND_STR(&s->sockout, "http.open(\"GET\", \"192.168.5.10/?args=temp\", true);\r\n");
-		PSOCK_SEND_STR(&s->sockout,"http.onreadystatechange=function() {\nif(http.readyState == 4) {\ndocument.getElementById('foo').innerHTML = http.responseText;\n}\n}\nhttp.send(null);\r\n");
+		PSOCK_SEND_STR(&s->sockout, "http.open(\"GET\", \"192.168.5.10/?args=dist\", true);\r\n");
+		PSOCK_SEND_STR(&s->sockout,"http.onreadystatechange=function() {\nif(http.readyState == 4) {\ndocument.getElementById('foo').innerHTML = mul(http.responseText);\n}\n}\nhttp.send(null);\r\n");
 		PSOCK_SEND_STR(&s->sockout,	"setTimeout (\"replace()\", 1000)};\n</script>");
 		PSOCK_SEND_STR(&s->sockout,	"<script type=\"text/javascript\">\n setTimeout (\"replace()\", 1000);\r\n</script>\r\n");
-		PSOCK_SEND_STR(&s->sockout, "<div id=\"foo\">\n Temperature is \n</div>\r\n");
-
+		PSOCK_SEND_STR(&s->sockout, "<div id=\"foo\">\nDistance is: --\n</div>\r\n");
+		PSOCK_SEND_STR(&s->sockout, "</body></html>\r\n");
 	}else if (s->state == STATE_OUTPUT_TEMP){
-		printf("Text Content\n");
+		printf("Temp Content\n");
   	PSOCK_SEND_STR(&s->sockout, "HTTP/1.0 200 OK\r\n");
 		PSOCK_SEND_STR(&s->sockout, "Content-Type: text/plain\r\n");
   	PSOCK_SEND_STR(&s->sockout, "\r\n");
 
-		char reading[] = "Temperature is: %d\r\n";
-		sprintf(reading, reading, range);
-		PSOCK_SEND_STR(&s->sockout, reading);
-	}else if (s->state == STATE_OUTPUT_DIST){
+		memset(to_write, 0, sizeof(to_write));
+		sprintf(to_write, "Temperature is: %d\r\n", range);
+		PSOCK_SEND_STR(&s->sockout, to_write);
 
+	}else if (s->state == STATE_OUTPUT_DIST){
+		printf("Dist Content\n");
+  	PSOCK_SEND_STR(&s->sockout, "HTTP/1.0 200 OK\r\n");
+		PSOCK_SEND_STR(&s->sockout, "Content-Type: text/html\r\n");
+  	PSOCK_SEND_STR(&s->sockout, "\r\n");
+
+		memset(to_write, 0, sizeof(to_write));
+		if (range < 200 && range > 20)
+			sprintf(to_write, "%d\r\n", range);
+		else 
+			sprintf(to_write, "0\r\n");
+
+		PSOCK_SEND_STR(&s->sockout, to_write);
+		PSOCK_SEND_STR(&s->sockout, "</body></html>\r\n");
 	}
 
-	PSOCK_SEND_STR(&s->sockout, "</body></html>\r\n");
-	printf("handle out3\n");
 
 	PSOCK_CLOSE(&s->sockout);
 	s->state=DATA_SENT;
@@ -79,17 +84,6 @@ PT_THREAD(handle_input(struct simple_httpd_state *s))
 	/*here we get the GET parameter (to next space)*/
   PSOCK_READTO(&s->sockin, ISO_space);
 
-	//printf("\n\nAgain Buffin:\n%s\nEndBuffin\n\n", s->buffin);
-
-	/*
-	 * now sockin contains the get argouments
-	 * Get couples of 'key=value' strings  in the sockin buff
-	 * function is defined in websrv_helper_functions library
-	char get_args_buf[4];
-	find_key_val(&s->buffin, &get_args_buf, 4, "args");
-	printf("\nKey value = %s\n", get_args_buf);
-	*/
-
   if(s->buffin[0] != ISO_slash) {
     PSOCK_CLOSE_EXIT(&s->sockin);
   }
@@ -97,14 +91,12 @@ PT_THREAD(handle_input(struct simple_httpd_state *s))
 	/* Parse the string until we find the '=' char*/
 	char *get_arg = (char *) &s->buffin;
 	while ( *(get_arg++) != '=' );
-	printf("string parsed: %s\n", get_arg);
-
+	//printf("string parsed: %s\n", get_arg);
   
 	/* Determinate the output state*/
 	if ( !strncmp(get_arg, GET_REQ_TEMP,
 				strlen(GET_REQ_TEMP) )){
 		s->state = STATE_OUTPUT_TEMP;
-		inc_counter();
 		printf("Temp State\n");
 
 	}else if ( !strncmp(get_arg, GET_REQ_DIST,
@@ -113,24 +105,20 @@ PT_THREAD(handle_input(struct simple_httpd_state *s))
 		printf("Dist State\n");
 
 	}else{
-		/*default is temp*/
 		s->state = STATE_OUTPUT_START;
 		printf("Default State\n");
 	}
 
-	
   while(1) {
     PSOCK_READTO(&s->sockin, ISO_nl);
   }
-	
-  
+
   PSOCK_END(&s->sockin);
 }
 
-void simple_httpd_init(void)
+void simple_ajax_init(void)
 {
 	//printf("Init simple Http App\n");
-	eeprom_write_byte(&data, 10);
 	uip_listen(HTONS(80));
 }
 
@@ -189,45 +177,3 @@ handle_connection(struct simple_httpd_state *s)
  }
 	return 0;
 }
-#if 0
-	/*get value stored in eeprom and build string*/
-	data_sram = eeprom_read_byte((uint8_t *)&data);
-	sprintf(message,message, data_sram);
-
-	PSOCK_BEGIN(&s->p);
-
-	if (uip_aborted() || uip_timedout() || uip_closed()) {;
-	}
-	else if (uip_rexmit()){
-		printf("rexmit\n");
-	}else if (uip_newdata()){
-		printf("newdata\n");
-	}else if (uip_acked()){
-		printf("ack\n");
-	}else if (uip_connected()){
-		printf("connected 2\n");
-	}else if (uip_poll()){
-		printf("poll\n");
-	}
-
-	printf("Handle Connection, state: %d\n", s->state);
-	if (s->state == CONNECTED){
-		PSOCK_SEND_STR(&s->p, "<html><head><title>:: A web page in an AVR ::</title> </head><body>");
-		PSOCK_SEND_STR(&s->p, message);
-		PSOCK_SEND_STR(&s->p, "\r\n");
-		PSOCK_SEND_STR(&s->p, "<br>Cambia Numero in EEPROM.. <br>\n");
-
-		PSOCK_SEND_STR(&s->p, "<form> Cambia numero: <input type=\"text\" />");
-		PSOCK_SEND_STR(&s->p, "<input type=\"submit\" value=\"Submit\" /> </form><br>");
-
-	//	PSOCK_READTO(&s->p, '\n');
-	//	printf("User typed: %s", s->digit);
-		PSOCK_SEND_STR(&s->p, "</body>");
-		s->state = DATA_SENT; /*we have to wait an ack to do so*/
-	}
-	else if (s->state == DATA_SENT){
-		PSOCK_READTO(&s->p, '\n');
-		printf("User typed: %s", s->digit);
-
-	}
-#endif

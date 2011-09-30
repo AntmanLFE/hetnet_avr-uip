@@ -24,6 +24,8 @@
 #define ISO_slash   0x2f
 #define ISO_colon   0x3a
 
+extern uint16_t range;
+
 struct simple_httpd_state {
 	/*data fields*/
 	uint8_t buffin[100];
