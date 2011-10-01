@@ -12,11 +12,15 @@
    If not defined make sure to call ow_set_bus() before using 
    a bus. Runtime bus-select increases code size by around 300 
    bytes so use OW_ONE_BUS if possible */
-//#define OW_ONE_BUS
+#define OW_ONE_BUS
 
 #ifdef OW_ONE_BUS
-
-#define OW_PIN  PB0
+	#ifdef PB0
+		#define OW_PIN  PB0
+	#else
+		#define OW_PIN PORTB0
+	#endif
+#define OW_PIN_MASK _BV(OW_PIN)
 #define OW_IN   PINB
 #define OW_OUT  PORTB
 #define OW_DDR  DDRB
@@ -51,23 +55,16 @@
 
 void OW_selectPort(unsigned char port) ;
 void find_sensor(uint8_t *diff, uint8_t id[]);
-
-
-extern uint8_t search_sensors(int maxSensors);
-
-extern uint8_t ow_reset(void);
-
-extern uint8_t ow_bit_io( uint8_t b );
-extern uint8_t ow_byte_wr( uint8_t b );
-extern uint8_t ow_byte_rd( void );
-
-extern uint8_t ow_rom_search( uint8_t diff, uint8_t *id );
-
-extern void ow_command( uint8_t command, uint8_t *id );
-
-extern void ow_parasite_enable(void);
-extern void ow_parasite_disable(void);
-extern uint8_t ow_input_pin_state(void);
+uint8_t search_sensors(int maxSensors);
+uint8_t ow_reset(void);
+uint8_t ow_bit_io( uint8_t b );
+uint8_t ow_byte_wr( uint8_t b );
+uint8_t ow_byte_rd( void );
+uint8_t ow_rom_search( uint8_t diff, uint8_t *id );
+void ow_command( uint8_t command, uint8_t *id );
+void ow_parasite_enable(void);
+void ow_parasite_disable(void);
+uint8_t ow_input_pin_state(void);
 
 #ifndef OW_ONE_BUS
 extern void ow_set_bus(volatile uint8_t* in,

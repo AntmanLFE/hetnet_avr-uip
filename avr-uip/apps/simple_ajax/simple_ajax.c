@@ -33,7 +33,7 @@ PT_THREAD(handle_output(struct simple_httpd_state *s))
 		PSOCK_SEND_STR(&s->sockout, "function replace() {\r\n");
 		PSOCK_SEND_STR(&s->sockout, "http.open(\"GET\", \"192.168.5.10/?args=dist\", true);\r\n");
 		PSOCK_SEND_STR(&s->sockout,"http.onreadystatechange=function() {\nif(http.readyState == 4) {\ndocument.getElementById('foo').innerHTML = mul(http.responseText);\n}\n}\nhttp.send(null);\r\n");
-		PSOCK_SEND_STR(&s->sockout,	"setTimeout (\"replace()\", 1000)};\n</script>");
+		PSOCK_SEND_STR(&s->sockout,	"setTimeout (\"replace()\", 500)};\n</script>");
 		PSOCK_SEND_STR(&s->sockout,	"<script type=\"text/javascript\">\n setTimeout (\"replace()\", 1000);\r\n</script>\r\n");
 		PSOCK_SEND_STR(&s->sockout, "<div id=\"foo\">\nDistance is: --\n</div>\r\n");
 		PSOCK_SEND_STR(&s->sockout, "</body></html>\r\n");

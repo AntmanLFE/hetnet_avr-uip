@@ -17,15 +17,17 @@
 #include <avr/pgmspace.h>
 
 #ifdef OW_ONE_BUS
-
-#define OW_GET_IN()   ( OW_IN & (1<<OW_PIN))
-#define OW_OUT_LOW()  ( OW_OUT &= (~(1 << OW_PIN)) )
-#define OW_OUT_HIGH() ( OW_OUT |= (1 << OW_PIN) )
-#define OW_DIR_IN()   ( OW_DDR &= (~(1 << OW_PIN )) )
-#define OW_DIR_OUT()  ( OW_DDR |= (1 << OW_PIN) )
-
-#else
-
+	#define OW_GET_IN()   ( OW_IN & (1<<OW_PIN))
+	#define OW_OUT_LOW()  ( OW_OUT &= (~(1 << OW_PIN)) )
+	#define OW_OUT_HIGH() ( OW_OUT |= (1 << OW_PIN) )
+	#define OW_DIR_IN()   ( OW_DDR &= (~(1 << OW_PIN )) )
+	#define OW_DIR_OUT()  ( OW_DDR |= (1 << OW_PIN) )
+	/*void stubs to make ds18s20.c compile*/
+	void OW_selectPort(unsigned char port) {};
+	uint8_t search_sensors(int maxSensors) {};
+	void ow_set_bus
+	(volatile uint8_t* in, volatile uint8_t* out,volatile uint8_t* ddr,uint8_t pin){};
+#else /*ifdef OW_ONE_BUS */
 /* set bus-config with ow_set_bus() */
 uint8_t OW_PIN_MASK; 
 volatile uint8_t* OW_IN;
@@ -39,6 +41,7 @@ volatile uint8_t* OW_DDR;
 #define OW_DIR_OUT()  ( *OW_DDR |= (uint8_t)  OW_PIN_MASK )
 //#define OW_PIN2 PD6
 //#define OW_DIR_IN2()   ( *OW_DDR &= ~(1 << OW_PIN2 ) )
+
 
 void OW_selectPort(unsigned char port) 
 {
@@ -130,8 +133,7 @@ void ow_set_bus(volatile uint8_t* in, volatile uint8_t* out,volatile uint8_t* dd
 	OW_PIN_MASK=(1<<pin);
 	ow_reset();
 }
-
-#endif
+#endif /*ifdef OW_ONE_BUS */
 
 uint8_t ow_input_pin_state()
 {

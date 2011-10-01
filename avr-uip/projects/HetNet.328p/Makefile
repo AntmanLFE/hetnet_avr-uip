@@ -16,7 +16,7 @@ OPT = s
 # Place -D or -U options here
 CDEFS = -DF_CPU=$(F_CPU)
 # Place -I options here
-CINCS = -I/usr/local/avr/
+CINCS = -I/usr/local/avr/ -I.
 # Compiler flag to set the C Standard level.
 # c89   - "ANSI" C
 # gnu89 - c89 plus GCC extensions
@@ -26,7 +26,7 @@ CSTANDARD = -std=gnu99
 CDEBUG = -g$(DEBUG)
 CWARN = -Wall -Wstrict-prototypes 
 
-CTUNING = -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums -Wl --defsym=__floatunsisf=__floatunssisf
+CTUNING = -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums 
 CFLAGS = -mmcu=$(MCU) $(CDEBUG) $(CDEFS) $(CINCS) -O$(OPT) $(CWARN) $(CSTANDARD) 
 
 
@@ -40,7 +40,7 @@ APPS	=  simple_ajax
 DEVS	= enc28j60 #The rest are determined by makefiles for apps
 
 #Compiled libs
-LIBS	= uart websrv_helper_functions #Determined by makefiles for apps or drivers
+LIBS	= uart websrv_helper_functions 1wire#Determined by makefiles for apps or drivers
 
 #Project specific files
 $(NAME)_SOURCES = main.c clock-arch.c

@@ -19,9 +19,11 @@ changelog:
 #include <avr/pgmspace.h>
 #include <stdbool.h>
 
+#include "uart.h"
+
 #include "config.h"
-#include "ds18x20.h"
 #include "onewire.h"
+#include "ds18x20.h"
 #include "crc8.h"
 
 #ifdef DS18X20_EEPROMSUPPORT
@@ -37,7 +39,9 @@ static uint8_t nextSensorPos = 0;
 void findSystemID(uint8_t* id)
 {
   printf("Scanning for system id...\r\n");
+#ifndef OW_ONE_BUS
     OW_selectPort(1);
+#endif
     int nSensors = search_sensors(MAXSENSORS);  //Finder alle sensore (op til max)
 		
     for ( int i=0; i<nSensors; i++ ) {
@@ -325,8 +329,6 @@ int8_t DS18X20_temp_cmp(uint8_t subzero1, uint16_t cel1,
 void DS18X20_find_sensor(uint8_t *diff, uint8_t id[])
 {
 	for (;;) {
-		*diff = ow_rom_search( *diff, &id[0] );
-		if ( *diff==OW_PRESENCE_ERR || *diff==OW_DATA_ERR || *diff == OW_LAST_DEVICE ) return;
 		if ( id[0] == DS18B20_ID || id[0] == DS18S20_ID ) return;
 	}
 }

@@ -10,6 +10,7 @@
 #include "network.h"
 #include "enc28j60.h"
 #include "uart.h"
+#include "onewire.h"
 
 #include <string.h>
 #define BUF ((struct uip_eth_hdr *)&uip_buf[0])
