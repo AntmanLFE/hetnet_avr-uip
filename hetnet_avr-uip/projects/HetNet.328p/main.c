@@ -16,7 +16,7 @@
 #define BUF ((struct uip_eth_hdr *)&uip_buf[0])
 
 /* === MACROS AND DATA ===*/
-/* --- Led handling functions ---*/
+/* --- LedPort handling ---*/
 #define LED_bm (1<<PORTC0)
 #define LEDPORT PORTC
 #define LEDPORT_D DDRC
@@ -24,8 +24,6 @@
 #define led_on() 	    LEDPORT |= LED_bm
 #define led_off()     LEDPORT &= ~LED_bm
 #define led_toggle()  LEDPORT ^= LED_bm
-
-/* --- ADC fields --- */
 
 /* --- Protothread and timers ---*/
 static struct pt blink_thread;
@@ -66,6 +64,7 @@ PT_THREAD(read_distance(uint8_t setup))
 	PT_BEGIN(&distance_thread);
 
 	if (setup){
+		/* Setup ADC if requested */
 		ADMUX  |= _BV(REFS1) | _BV(REFS0);
 		ADMUX  |= _BV(MUX0);
 		ADCSRA |= _BV(ADEN);
@@ -89,15 +88,16 @@ PT_THREAD(read_distance(uint8_t setup))
 	ADCSRA |= _BV(ADSC);
 	while ( (ADCSRA & _BV(ADIF))){;}
 	ADCSRA |= _BV(ADIF);
-	uint16_t adc =  ((ADCL) | ((ADCH&0x03)<<8));
+ 	range =  ((ADCL) | ((ADCH&0x03)<<8));
 	/* Let's do the math:
-	 * 1 hinc = 2.54 cm
+	 * 1 inch = 2.54 cm
 	 * ( (Vcc/512)=6.4mV)\1 inch  6.4mV\2.54 cm
 	 * distance = adc / (6.4/2.54) = adc * (2.54/6.4)
 	 *			   ~= adc*0.40
+	 *
+	 * Conversion is made by js page because of gcc
+	 * bug (__clz_tab linking)
 	 */
-	float fact = 2.5;
-	range =  (adc);
 	printf("Range %d\n", range);
 
 	PT_END(&distance_thread);
@@ -147,8 +147,6 @@ int main(int argc, char *argv[])
   uip_setdraddr(ipaddr);
   uip_ipaddr(ipaddr, 255,255,255,0);
   uip_setnetmask(ipaddr);
-
-
 
 	PT_INIT(&blink_thread);
 	PT_INIT(&distance_thread);

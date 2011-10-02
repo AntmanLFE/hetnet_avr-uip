@@ -46,7 +46,6 @@ PT_THREAD(handle_output(struct simple_httpd_state *s))
 		memset(to_write, 0, sizeof(to_write));
 		sprintf(to_write, "Temperature is: %d\r\n", range);
 		PSOCK_SEND_STR(&s->sockout, to_write);
-
 	}else if (s->state == STATE_OUTPUT_DIST){
 		printf("Dist Content\n");
   	PSOCK_SEND_STR(&s->sockout, "HTTP/1.0 200 OK\r\n");
@@ -118,7 +117,6 @@ PT_THREAD(handle_input(struct simple_httpd_state *s))
 
 void simple_ajax_init(void)
 {
-	//printf("Init simple Http App\n");
 	uip_listen(HTONS(80));
 }
 
