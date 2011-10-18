@@ -24,7 +24,7 @@
 	#define OW_DIR_OUT()  ( OW_DDR |= (1 << OW_PIN) )
 	/*void stubs to make ds18s20.c compile*/
 	void OW_selectPort(unsigned char port) {};
-	uint8_t search_sensors(int maxSensors) {};
+	uint8_t search_sensors(int maxSensors) {return 1;};
 	void ow_set_bus
 	(volatile uint8_t* in, volatile uint8_t* out,volatile uint8_t* ddr,uint8_t pin){};
 #else /*ifdef OW_ONE_BUS */
