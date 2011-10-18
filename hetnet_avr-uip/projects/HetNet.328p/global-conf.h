@@ -26,13 +26,13 @@
 /*Ip Address for uIP*/
 #define UIP_IPADDR0	192
 #define UIP_IPADDR1	168
-#define UIP_IPADDR2	5
+#define UIP_IPADDR2	1
 #define UIP_IPADDR3	10
 /*Destination address for uIP*/
 #define UIP_DRIPADDR0 192
 #define UIP_DRIPADDR1 168
-#define UIP_DRIPADDR2 5
-#define UIP_DRIPADDR3 5
+#define UIP_DRIPADDR2 1
+#define UIP_DRIPADDR3 1
 /*Netmask for uIP*/
 #define UIP_NETMASK0 255
 #define UIP_NETMASK1 255
