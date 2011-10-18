@@ -10,13 +10,14 @@
 #include "network.h"
 #include "enc28j60.h"
 #include "uart.h"
-#include "onewire.h"
 
 #include <string.h>
 #define BUF ((struct uip_eth_hdr *)&uip_buf[0])
 
+
 /* === MACROS AND DATA ===*/
 /* --- LedPort handling ---*/
+#define SAMPLES 5
 #define LED_bm (1<<PORTC0)
 #define LEDPORT PORTC
 #define LEDPORT_D DDRC
@@ -30,8 +31,12 @@ static struct pt blink_thread;
 static struct timer blink_timer;
 static struct pt distance_thread;
 static struct timer distance_timer;
-/* --- measured distance ---*/
+static struct timer avg_distance_timer;
+/* ---measured distance, total distance and samples---*/
 uint16_t range=0;
+uint16_t range_t;
+uint8_t samples;
+
 int setup;
 
 
@@ -43,13 +48,13 @@ PT_THREAD(blink(void))
 	PT_BEGIN(&blink_thread);
 
 		led_on();
-		printf("led ON\n");
+		//printf("led ON\n");
 		timer_set(&blink_timer, CLOCK_CONF_SECOND);
 		PT_WAIT_UNTIL(&blink_thread, 
 				timer_expired(&blink_timer));
 
 		led_off();
-		printf("Led OFF\n");
+		//printf("Led OFF\n");
 		timer_set(&blink_timer, CLOCK_CONF_SECOND);
 		PT_WAIT_UNTIL(&blink_thread,
 				timer_expired(&blink_timer));
@@ -65,30 +70,40 @@ PT_THREAD(read_distance(uint8_t setup))
 
 	if (setup){
 		/* Setup ADC if requested */
-		ADMUX  |= _BV(REFS1) | _BV(REFS0);
+		ADMUX  |= _BV(REFS1) | _BV(REFS0);//internal 1.1V
 		ADMUX  |= _BV(MUX0);
 		ADCSRA |= _BV(ADEN);
 
+		/* FIXME: delete and use avg_distance_timer*/
 		timer_set(&distance_timer, (uint8_t)
 				(CLOCK_CONF_SECOND/2));
 		PT_WAIT_UNTIL(&distance_thread, 
 			timer_expired(&distance_timer));
 	}
 
-	/* --- reading timer --- */
-	timer_set(&distance_timer, CLOCK_CONF_SECOND);
-	PT_WAIT_UNTIL(&distance_thread, 
-		timer_expired(&distance_timer));
-
-	/* --- get value frome ADC and convert ---
+	/* --- get value from ADC and convert ---
+	 *  - select distance sensor channel MUX0
 	 * 	- start conversion
 	 * 	- wait for conversion end
 	 * 	- clear interrupt flag
 	 */
-	ADCSRA |= _BV(ADSC);
-	while ( (ADCSRA & _BV(ADIF))){;}
-	ADCSRA |= _BV(ADIF);
- 	range =  ((ADCL) | ((ADCH&0x03)<<8));
+
+	range_t = 0;
+	for (samples=0; samples < SAMPLES; samples++){
+		/*wait 100ms*/
+		timer_set(&avg_distance_timer, 
+				(int)CLOCK_CONF_SECOND/10);
+		PT_WAIT_UNTIL(&distance_thread, 
+			timer_expired(&avg_distance_timer));
+		/*get a sample*/
+		ADCSRA |= _BV(ADSC);
+		while ( (ADCSRA & _BV(ADIF))){;}
+		range_t +=  ((ADCL) | ((ADCH&0x03)<<8));
+	}
+
+	//ADCSRA &= ~_BV(ADSC);
+	range = range_t/SAMPLES;
+
 	/* Let's do the math:
 	 * 1 inch = 2.54 cm
 	 * ( (Vcc/512)=6.4mV)\1 inch  6.4mV\2.54 cm
@@ -98,7 +113,7 @@ PT_THREAD(read_distance(uint8_t setup))
 	 * Conversion is made by js page because of gcc
 	 * bug (__clz_tab linking)
 	 */
-	printf("Range %d\n", range);
+	printf(" Range %d\n", range);
 
 	PT_END(&distance_thread);
 }
@@ -125,7 +140,7 @@ int main(int argc, char *argv[])
 
 	usart_init(brate);
 	usart_redirect_stdout();
-	printf("\n\n****************************\n\n");
+	printf("\n\n********** HETNETv0.1 ****************\n\n");
 	printf("Starting uIP \n");
 	printf("Configuring clock \n");
 	led_conf();
@@ -138,15 +153,19 @@ int main(int argc, char *argv[])
 	printf("Set EHT mac Address\n");
 	uip_setethaddr(mac);
 
-	simple_ajax_init();
-	printf("Configuring HTTPD daemon \n");
-	
-  uip_ipaddr(ipaddr, 192,168,5,10);
+
+  uip_ipaddr(ipaddr,
+		UIP_IPADDR0, UIP_IPADDR1, UIP_IPADDR2, UIP_IPADDR3);
+	printf("Set EHT ip Address\n");
+
   uip_sethostaddr(ipaddr);
-  uip_ipaddr(ipaddr, 192,168,5,5);
+  uip_ipaddr(ipaddr, 192,168,1,1);
   uip_setdraddr(ipaddr);
   uip_ipaddr(ipaddr, 255,255,255,0);
   uip_setnetmask(ipaddr);
+
+	simple_ajax_init();
+	printf("Configuring HTTPD daemon \n");
 
 	PT_INIT(&blink_thread);
 	PT_INIT(&distance_thread);
