@@ -40,12 +40,14 @@ PT_THREAD(handle_output(struct simple_httpd_state *s))
 	}else if (s->state == STATE_OUTPUT_TEMP){
 		printf("Temp Content\n");
   	PSOCK_SEND_STR(&s->sockout, "HTTP/1.0 200 OK\r\n");
-		PSOCK_SEND_STR(&s->sockout, "Content-Type: text/plain\r\n");
+		PSOCK_SEND_STR(&s->sockout, "Content-Type: text/html\r\n");
   	PSOCK_SEND_STR(&s->sockout, "\r\n");
 
 		memset(to_write, 0, sizeof(to_write));
-		sprintf(to_write, "Temperature is: %d\r\n", range);
+		PSOCK_SEND_STR(&s->sockout, "<html><head><title></title></head><body>\r\n");
+		sprintf(to_write, "%d\r\n", range);
 		PSOCK_SEND_STR(&s->sockout, to_write);
+		PSOCK_SEND_STR(&s->sockout, "</body></html>\r\n");
 	}else if (s->state == STATE_OUTPUT_DIST){
 		printf("Dist Content\n");
   	PSOCK_SEND_STR(&s->sockout, "HTTP/1.0 200 OK\r\n");
@@ -75,7 +77,7 @@ PT_THREAD(handle_input(struct simple_httpd_state *s))
   PSOCK_BEGIN(&s->sockin);
 
   PSOCK_READTO(&s->sockin, ISO_space);
-//	printf("---Buffin---\n%s\n----End Buffin----\n\n", s->buffin);
+	//printf("---Buffin---\n%s\n----End Buffin----\n\n", s->buffin);
   
   if(strncmp(s->buffin, http_get, 4) != 0) {
     PSOCK_CLOSE_EXIT(&s->sockin);
@@ -96,16 +98,16 @@ PT_THREAD(handle_input(struct simple_httpd_state *s))
 	if ( !strncmp(get_arg, GET_REQ_TEMP,
 				strlen(GET_REQ_TEMP) )){
 		s->state = STATE_OUTPUT_TEMP;
-		printf("Temp State\n");
+		//printf("Temp State\n");
 
 	}else if ( !strncmp(get_arg, GET_REQ_DIST,
 				strlen(GET_REQ_DIST) )){
 		s->state = STATE_OUTPUT_DIST;
-		printf("Dist State\n");
+		//printf("Dist State\n");
 
 	}else{
 		s->state = STATE_OUTPUT_START;
-		printf("Default State\n");
+		//printf("Default State\n");
 	}
 
   while(1) {

@@ -6,6 +6,7 @@
 #define DATA_SENT 0x01
 #define DATA_IN 0x02
 /*OPUTPUT state identifiers*/
+#define NO_RESP 0x02
 #define STATE_OUTPUT 0x03 
 #define STATE_OUTPUT_TEMP 0x04
 #define STATE_OUTPUT_DIST 0x05
