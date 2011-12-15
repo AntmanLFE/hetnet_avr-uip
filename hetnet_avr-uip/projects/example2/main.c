@@ -29,15 +29,6 @@
 /* --- Protothread and timers ---*/
 static struct pt blink_thread;
 static struct timer blink_timer;
-static struct pt distance_thread;
-static struct timer distance_timer;
-static struct timer avg_distance_timer;
-/* ---measured distance, total distance and samples---*/
-uint16_t range=0;
-uint16_t range_t;
-uint8_t samples;
-
-int setup;
 
 
 /* === PROTOTHREADS  ===*/
@@ -54,69 +45,13 @@ PT_THREAD(blink(void))
 				timer_expired(&blink_timer));
 
 		led_off();
-		//printf("Led OFF\n");
+	//	printf("Led OFF\n");
 		timer_set(&blink_timer, CLOCK_CONF_SECOND);
 		PT_WAIT_UNTIL(&blink_thread,
 				timer_expired(&blink_timer));
 
 	PT_END(&blink_thread);
 }
-
-/* --- Distance protothread ---*/
-PT_THREAD(read_distance(uint8_t setup))
-{
-	/* --- Start continuous reading --- */
-	PT_BEGIN(&distance_thread);
-
-	if (setup){
-		/* Setup ADC if requested */
-		ADMUX  |= _BV(REFS1) | _BV(REFS0);//internal 1.1V
-		ADMUX  |= _BV(MUX0);
-		ADCSRA |= _BV(ADEN);
-
-		timer_set(&distance_timer, (uint8_t)
-				(CLOCK_CONF_SECOND/2));
-		PT_WAIT_UNTIL(&distance_thread, 
-			timer_expired(&distance_timer));
-	}
-
-	/* --- get value from ADC and convert ---
-	 *  - select distance sensor channel MUX0
-	 * 	- start conversion
-	 * 	- wait for conversion end
-	 * 	- clear interrupt flag
-	 */
-
-	range_t = 0;
-	for (samples=0; samples < SAMPLES; samples++){
-		/*wait 100ms*/
-		timer_set(&avg_distance_timer, 
-				(int)CLOCK_CONF_SECOND/10);
-		PT_WAIT_UNTIL(&distance_thread, 
-			timer_expired(&avg_distance_timer));
-		/*get a sample*/
-		ADCSRA |= _BV(ADSC);
-		while ( (ADCSRA & _BV(ADIF))){;}
-		range_t +=  ((ADCL) | ((ADCH&0x03)<<8));
-	}
-
-	//ADCSRA &= ~_BV(ADSC);
-	range = range_t/SAMPLES;
-
-	/* Let's do the math:
-	 * 1 inch = 2.54 cm
-	 * ( (Vcc/512)=6.4mV)\1 inch  6.4mV\2.54 cm
-	 * distance = adc / (6.4/2.54) = adc * (2.54/6.4)
-	 *			   ~= adc*0.40
-	 *
-	 * Conversion is made by js page because of gcc
-	 * bug (__clz_tab linking)
-	 */
-	printf(" Range %d\n", range);
-
-	PT_END(&distance_thread);
-}
-	
 
 
 /* === MAIN === */
@@ -125,12 +60,12 @@ int main(int argc, char *argv[])
 	/*9600, 2x, @8Mhz*/
 	uint16_t brate = 103; 
 	int i;
+	struct timer periodic_timer, arp_timer;
 	uip_ipaddr_t ipaddr;
 	struct uip_eth_addr 
 		mac = {UIP_ETHADDR0, UIP_ETHADDR1, 
 			UIP_ETHADDR2, UIP_ETHADDR3,
 			UIP_ETHADDR4, UIP_ETHADDR5};
-	struct timer periodic_timer, arp_timer;
 
 	/*--- device setup ---*/
 	clock_init();
@@ -158,33 +93,40 @@ int main(int argc, char *argv[])
 	printf("Set EHT ip Address\n");
 
   uip_sethostaddr(ipaddr);
-  uip_ipaddr(ipaddr, 192,168,1,1);
+  uip_ipaddr(ipaddr, 192,168,5,1);
   uip_setdraddr(ipaddr);
   uip_ipaddr(ipaddr, 255,255,255,0);
   uip_setnetmask(ipaddr);
 
-	simple_ajax_init();
+	simple_httpd_init();
 	printf("Configuring HTTPD daemon \n");
 
 	PT_INIT(&blink_thread);
-	PT_INIT(&distance_thread);
-	blink();
-	read_distance(1);
 
 	while(1){
 		blink();
-		read_distance(0);
+
+		/* --- uIP loop --- */
 		uip_len = network_read();
 
 		if(uip_len > 0) {
+			/* --- an IP frame recv --- */
 			if(BUF->type == htons(UIP_ETHTYPE_IP)){
+				/* - Refresh ARP table
+				 * - Check for incoming data
+				 */
 				uip_arp_ipin();
 				uip_input();
 				if(uip_len > 0) {
+					/* - Find IP address in ARP table and 
+					 *	 contrstruct IP header in BUF
+					 * - Network device send function
+					 */
 					uip_arp_out();
 					network_send();
 				}
 			}else if(BUF->type == htons(UIP_ETHTYPE_ARP)){
+				/* --- an ARP frame received --- */
 				uip_arp_arpin();
 				if(uip_len > 0){
 					network_send();
@@ -192,9 +134,10 @@ int main(int argc, char *argv[])
 			}
 
 		}else if(timer_expired(&periodic_timer)) {
+			/* --- Periodic Timer --- */
 			timer_reset(&periodic_timer);
-
 			for(i = 0; i < UIP_CONNS; i++) {
+				/*poll uIP connection*/
 				uip_periodic(i);
 				if(uip_len > 0) {
 					uip_arp_out();
@@ -211,7 +154,6 @@ int main(int argc, char *argv[])
 				}
 			}
 			#endif /* UIP_UDP */
-
 			if(timer_expired(&arp_timer)) {
 				timer_reset(&arp_timer);
 				uip_arp_timer();
